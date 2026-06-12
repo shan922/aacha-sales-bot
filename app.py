@@ -111,63 +111,40 @@ def update_payment_status(msg_id, status):
             break
 
 
-# ---------------- TELEGRAM HANDLER ----------------
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    msg_id = update.message.message_id
-
-    data = parse_message(text)
-
-    if not data["amount"]:
-        return
-
-    # UPDATE SALES
-    update_sales(data["date"], data["amount"])
-
-    # ADD PAYMENT RECORD
-    add_payment(msg_id, data)
-
-
-# ---------------- EDIT HANDLER ----------------
-async def handle_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.edited_message:
-        return
-
-    text = update.edited_message.text
-    msg_id = update.edited_message.message_id
-
-    data = parse_message(text)
-
-    if data["status"]:
-        update_payment_status(msg_id, data["status"])
-
-
-# ---------------- FLASK ROUTE ----------------
-@app.route("/", methods=["GET", "POST"])
+# ---------------- FLASK WEBHOOK ----------------
+@app.route("/", methods=["POST"])
 def webhook():
-    if request.method == "POST":
-        data = request.get_json()
+    data = request.get_json()
 
-        print("UPDATE RECEIVED")
-        print(data)
+    print("UPDATE RECEIVED")
+    print(data)
 
-        update = Update.de_json(data, app_bot)
-        app_bot.update_queue.put_nowait(update)
-
+    if not data:
         return "OK"
 
-    return "Bot Running"
+    message = data.get("message")
+    edited = data.get("edited_message")
 
-@app.route("/test", methods=["GET"])
-def test():
-    print("TEST ROUTE HIT")
+    msg = edited if edited else message
+
+    if not msg:
+        return "OK"
+
+    text = msg.get("text", "")
+    msg_id = msg.get("message_id")
+
+    data_parsed = parse_message(text)
+
+    if data_parsed["amount"]:
+        update_sales(data_parsed["date"], data_parsed["amount"])
+        add_payment(msg_id, data_parsed)
+
+    if data_parsed["status"]:
+        update_payment_status(msg_id, data_parsed["status"])
+
     return "OK"
 
-# ---------------- START BOT ----------------
-app_bot = Application.builder().token(BOT_TOKEN).build()
 
-app_bot.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-app_bot.add_handler(MessageHandler(filters.UpdateType.EDITED_MESSAGE, handle_edit))
-
+# ---------------- START FLASK ----------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
