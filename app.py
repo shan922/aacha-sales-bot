@@ -158,6 +158,11 @@ def webhook():
 
     return "Bot Running"
 
+@app.route("/test", methods=["GET"])
+def test():
+    print("TEST ROUTE HIT")
+    return "OK"
+
 # ---------------- START BOT ----------------
 app_bot = Application.builder().token(BOT_TOKEN).build()
 
