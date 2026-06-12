@@ -1,25 +1,26 @@
 import os
 import json
 import re
-import datetime
 from flask import Flask, request
 import gspread
 from google.oauth2.service_account import Credentials
-from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
 # ---------------- ENV ----------------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # ---------------- GOOGLE SHEETS ----------------
-SCOPE = ["https://spreadsheets.google.com/feeds",
-         "https://www.googleapis.com/auth/drive"]
+SCOPE = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
 
 google_creds = json.loads(os.environ["GOOGLE_CREDENTIALS"])
 
 CREDS = Credentials.from_service_account_info(
     google_creds,
-    scopes=SCOPE)
+    scopes=SCOPE
+)
+
 client = gspread.authorize(CREDS)
 
 SHEET = client.open("AACHA RIDE SALES")
@@ -40,6 +41,9 @@ def parse_message(text):
         "amount": 0,
         "status": "",
     }
+
+    if not text:
+        return data
 
     lines = text.split("\n")
 
@@ -62,7 +66,9 @@ def parse_message(text):
             data["days"] = line.replace("Taken for", "").strip()
 
         elif line.startswith("Amount:"):
-            data["amount"] = int(re.findall(r"\d+", line)[0])
+            match = re.findall(r"\d+", line)
+            if match:
+                data["amount"] = int(match[0])
 
         elif line.lower().startswith("paid"):
             data["status"] = "Paid"
@@ -75,76 +81,103 @@ def parse_message(text):
 
 # ---------------- SALES UPDATE ----------------
 def update_sales(date_str, amount):
-    day = int(date_str.split("-")[2])  # 1–31
+    try:
+        if not date_str:
+            print("NO DATE FOUND")
+            return
 
-    cell = SALES_SHEET.cell(2, day).value
+        day = int(date_str.split("-")[2])
 
-    if cell == None or cell == "":
-        cell = 0
+        cell = SALES_SHEET.cell(2, day).value
 
-    new_total = int(cell) + amount
+        if not cell:
+            cell = 0
 
-    SALES_SHEET.update_cell(2, day, new_total)
+        new_total = int(cell) + int(amount)
+
+        SALES_SHEET.update_cell(2, day, new_total)
+
+        print(f"SALES UPDATED: Day {day} + {amount}")
+
+    except Exception as e:
+        print("SALES ERROR:", e)
 
 
-# ---------------- PAYMENT UPDATE ----------------
+# ---------------- PAYMENT ADD ----------------
 def add_payment(msg_id, data):
-    PAYMENTS_SHEET.append_row([
-        msg_id,
-        data["date"],
-        data["customer"],
-        data["bike"],
-        data["time"],
-        data["days"],
-        data["amount"],
-        data["status"],
-        data["days"]
-    ])
+    try:
+        PAYMENTS_SHEET.append_row([
+            msg_id,
+            data.get("date", ""),
+            data.get("customer", ""),
+            data.get("bike", ""),
+            data.get("time", ""),
+            data.get("days", ""),
+            data.get("amount", 0),
+            data.get("status", ""),
+            data.get("days", "")
+        ])
+
+        print("PAYMENT ADDED")
+
+    except Exception as e:
+        print("PAYMENT ERROR:", e)
 
 
+# ---------------- PAYMENT STATUS UPDATE ----------------
 def update_payment_status(msg_id, status):
-    records = PAYMENTS_SHEET.get_all_records()
+    try:
+        records = PAYMENTS_SHEET.get_all_records()
 
-    for i, row in enumerate(records):
-        if str(row["Msg ID"]) == str(msg_id):
-            PAYMENTS_SHEET.update_cell(i+2, 8, status)
-            break
+        for i, row in enumerate(records):
+            if str(row.get("Msg ID")) == str(msg_id):
+                PAYMENTS_SHEET.update_cell(i + 2, 8, status)
+                print("STATUS UPDATED")
+                return
+
+    except Exception as e:
+        print("STATUS ERROR:", e)
 
 
-# ---------------- FLASK WEBHOOK ----------------
+# ---------------- WEBHOOK ----------------
 @app.route("/", methods=["POST"])
 def webhook():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    print("UPDATE RECEIVED")
-    print(data)
+        print("UPDATE RECEIVED")
+        print(data)
 
-    if not data:
+        if not data:
+            return "OK"
+
+        message = data.get("message")
+        edited = data.get("edited_message")
+
+        msg = edited if edited else message
+
+        if not msg:
+            return "OK"
+
+        text = msg.get("text", "")
+        msg_id = msg.get("message_id")
+
+        parsed = parse_message(text)
+
+        if parsed["amount"]:
+            update_sales(parsed["date"], parsed["amount"])
+            add_payment(msg_id, parsed)
+
+        if parsed["status"]:
+            update_payment_status(msg_id, parsed["status"])
+
         return "OK"
 
-    message = data.get("message")
-    edited = data.get("edited_message")
-
-    msg = edited if edited else message
-
-    if not msg:
+    except Exception as e:
+        print("WEBHOOK ERROR:", e)
         return "OK"
 
-    text = msg.get("text", "")
-    msg_id = msg.get("message_id")
 
-    data_parsed = parse_message(text)
-
-    if data_parsed["amount"]:
-        update_sales(data_parsed["date"], data_parsed["amount"])
-        add_payment(msg_id, data_parsed)
-
-    if data_parsed["status"]:
-        update_payment_status(msg_id, data_parsed["status"])
-
-    return "OK"
-
-
-# ---------------- START FLASK ----------------
+# ---------------- START ----------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
