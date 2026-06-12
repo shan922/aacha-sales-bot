@@ -1,4 +1,5 @@
 import os
+import json
 import re
 import datetime
 from flask import Flask, request
@@ -14,7 +15,11 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 SCOPE = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 
-CREDS = Credentials.from_service_account_file("credentials.json", scopes=SCOPE)
+google_creds = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+
+CREDS = Credentials.from_service_account_info(
+    google_creds,
+    scopes=SCOPE)
 client = gspread.authorize(CREDS)
 
 SHEET = client.open("AACHA RIDE SALES")
