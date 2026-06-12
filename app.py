@@ -146,11 +146,17 @@ async def handle_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @app.route("/", methods=["GET", "POST"])
 def webhook():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(), app_bot)
-        app_bot.update_queue.put_nowait(update)
-        return "OK"
-    return "Bot Running"
+        data = request.get_json()
 
+        print("UPDATE RECEIVED")
+        print(data)
+
+        update = Update.de_json(data, app_bot)
+        app_bot.update_queue.put_nowait(update)
+
+        return "OK"
+
+    return "Bot Running"
 
 # ---------------- START BOT ----------------
 app_bot = Application.builder().token(BOT_TOKEN).build()
