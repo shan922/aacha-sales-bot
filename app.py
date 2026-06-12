@@ -23,8 +23,8 @@ CREDS = Credentials.from_service_account_info(
 client = gspread.authorize(CREDS)
 
 SHEET = client.open("AACHA RIDE SALES")
-SALES_SHEET = SHEET.worksheet("Sales")
-PAYMENTS_SHEET = SHEET.worksheet("Payments")
+SALES_SHEET = SHEET.worksheet("sales")
+PAYMENTS_SHEET = SHEET.worksheet("payments")
 
 # ---------------- FLASK ----------------
 app = Flask(__name__)
