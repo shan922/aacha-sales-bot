@@ -163,12 +163,15 @@ def webhook():
 
         parsed = parse_message(text)
 
-        if parsed["amount"]:
-            update_sales(parsed["date"], parsed["amount"])
-            add_payment(msg_id, parsed)
+        is_edited = data.get("edited_message") is not None
 
-        if parsed["status"]:
-            update_payment_status(msg_id, parsed["status"])
+if is_edited:
+    if parsed["status"]:
+        update_payment_status(msg_id, parsed["status"])
+else:
+    if parsed["amount"]:
+        update_sales(parsed["date"], parsed["amount"])
+        add_payment(msg_id, parsed)
 
         return "OK"
 
