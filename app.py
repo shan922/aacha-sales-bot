@@ -79,28 +79,31 @@ def parse_message(text):
     return data
 
 
+
 # ---------------- SALES UPDATE ----------------
 def update_sales(date_str, amount):
     try:
         if not date_str:
-            print("NO DATE FOUND")
             return
 
         day = int(date_str.split("-")[2])
 
-        cell = SALES_SHEET.cell(2, day).value
+        col = day
+        row = 2
 
-        if not cell:
-            cell = 0
+        while SALES_SHEET.cell(row, col).value not in (None, ""):
+            row += 1
 
-        new_total = int(cell) + int(amount)
+        SALES_SHEET.update_cell(row, col, amount)
 
-        SALES_SHEET.update_cell(2, day, new_total)
-
-        print(f"SALES UPDATED: Day {day} + {amount}")
+        print(f"Added {amount} to Day {day} Row {row}")
 
     except Exception as e:
         print("SALES ERROR:", e)
+
+
+# ---------------- PAYMENT ADD ----------------
+def add_payment(msg_id, data):
 
 
 # ---------------- PAYMENT ADD ----------------
