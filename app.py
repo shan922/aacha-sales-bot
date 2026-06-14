@@ -104,10 +104,6 @@ def update_sales(date_str, amount):
 
 # ---------------- PAYMENT ADD ----------------
 def add_payment(msg_id, data):
-
-
-# ---------------- PAYMENT ADD ----------------
-def add_payment(msg_id, data):
     try:
         PAYMENTS_SHEET.append_row([
             msg_id,
