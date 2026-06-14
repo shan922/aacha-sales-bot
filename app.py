@@ -23,7 +23,7 @@ CREDS = Credentials.from_service_account_info(
 
 client = gspread.authorize(CREDS)
 
-SHEET = client.open("AACHA RIDE SALES")
+SHEET = client.open_by_key("1-jk1JIOQoR1uQU1UpnVlgXNrkcacvF8iViY46Vh7Sp8")
 SALES_SHEET = SHEET.worksheet("sales")
 PAYMENTS_SHEET = SHEET.worksheet("payments")
 
