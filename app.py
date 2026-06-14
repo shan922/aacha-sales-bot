@@ -81,6 +81,7 @@ def parse_message(text):
 
 
 # ---------------- SALES UPDATE ----------------
+from datetime import datetime, timedelta
 def update_sales(date_str, amount):
     try:
         if not date_str:
@@ -100,6 +101,33 @@ def update_sales(date_str, amount):
 
     except Exception as e:
         print("SALES ERROR:", e)
+
+# ---------------- NEW FUNCTION (ADD HERE) ----------------
+def add_multi_day_sales(date_str, amount, days):
+    try:
+        if not date_str or not days:
+            return
+
+        start_date = datetime.strptime(date_str, "%Y-%m-%d")
+        days = int(days)
+        daily_amount = int(amount / days)
+
+        for i in range(days):
+            current_day = start_date + timedelta(days=i)
+            day = current_day.day
+
+            col = day
+            row = 2
+
+            while SALES_SHEET.cell(row, col).value not in (None, ""):
+                row += 1
+
+            SALES_SHEET.update_cell(row, col, daily_amount)
+
+        print("MULTI-DAY SALES ADDED")
+
+    except Exception as e:
+        print("MULTI SALES ERROR:", e)
 
 
 # ---------------- PAYMENT ADD ----------------
@@ -170,7 +198,11 @@ def webhook():
                 update_payment_status(msg_id, parsed["status"])
         else:
             if parsed["amount"]:
-                update_sales(parsed["date"], parsed["amount"])
+                add_multi_day_sales(
+                    parsed["date"],
+                    parsed["amount"],
+                    parsed["days"]
+                )
                 add_payment(msg_id, parsed)
 
         return "OK"
