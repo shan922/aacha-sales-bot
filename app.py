@@ -63,7 +63,9 @@ def parse_message(text):
             data["time"] = line.replace("Time:", "").strip()
 
         elif line.startswith("Taken for"):
-            data["days"] = line.replace("Taken for", "").strip()
+            match = re.findall(r"\d+", line)
+            if match:
+                data["days"] = match[0]
 
         elif line.startswith("Amount:"):
             match = re.findall(r"\d+", line)
@@ -105,7 +107,9 @@ def update_sales(date_str, amount):
 # ---------------- NEW FUNCTION (ADD HERE) ----------------
 def add_multi_day_sales(date_str, amount, days):
     try:
-        if not date_str or not days:
+        print("DEBUG:", date_str, amount, days)
+
+        if not date_str or not str(days).isdigit():
             return
 
         start_date = datetime.strptime(date_str, "%Y-%m-%d")
